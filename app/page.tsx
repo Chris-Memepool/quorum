@@ -7,16 +7,59 @@ import { DefaultChatTransport } from "ai"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { ArrowUp, Plus, Moon, Sun } from "lucide-react"
+import { ArrowUp, Plus, Moon, Sun, Sliders, Lock, X } from "lucide-react"
 import { useRef, useEffect, useState } from "react"
 import { OrbitalBackground } from "@/components/orbital-background"
 
 type Mode = "chat" | "troubleshoot"
 type Theme = "light" | "dark"
 
+type ModelInfo = {
+  name: string
+  price: string
+  isFree: boolean
+  isLocked: boolean
+}
+
+type ModelProvider = {
+  name: string
+  color: string
+  models: ModelInfo[]
+}
+
+const modelProviders: ModelProvider[] = [
+  {
+    name: "OpenAI",
+    color: "bg-teal-500",
+    models: [
+      { name: "GPT-4o", price: "Free", isFree: true, isLocked: false },
+      { name: "GPT-4 Turbo", price: "$20", isFree: false, isLocked: true },
+      { name: "o1", price: "$30", isFree: false, isLocked: true },
+      { name: "o1-mini", price: "$15", isFree: false, isLocked: true },
+    ],
+  },
+  {
+    name: "Google",
+    color: "bg-purple-500",
+    models: [
+      { name: "Gemini 1.5 Flash", price: "Free", isFree: true, isLocked: false },
+      { name: "Gemini 1.5 Pro", price: "$25", isFree: false, isLocked: true },
+    ],
+  },
+  {
+    name: "Anthropic",
+    color: "bg-orange-500",
+    models: [
+      { name: "Claude Sonnet", price: "Free", isFree: true, isLocked: false },
+      { name: "Claude Opus", price: "$35", isFree: false, isLocked: true },
+    ],
+  },
+]
+
 export default function ChatPage() {
   const [mode, setMode] = useState<Mode>("chat")
   const [theme, setTheme] = useState<Theme>("light")
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(false)
   const [aiModels, setAiModels] = useState({
     gpt: true,
     gemini: true,
@@ -53,6 +96,10 @@ export default function ChatPage() {
       ...prev,
       [model]: !prev[model],
     }))
+  }
+
+  const handleLockedModelClick = (modelName: string, price: string) => {
+    alert(`Upgrade to access ${modelName} for ${price}/month`)
   }
 
   const { messages, sendMessage, status } = useChat({
@@ -98,6 +145,7 @@ export default function ChatPage() {
       <OrbitalBackground />
 
       <div className="min-h-screen flex">
+        {/* Left sidebar */}
         <div className="w-64 bg-slate-950/80 backdrop-blur-sm border-r border-slate-800 flex flex-col p-4 gap-4">
           <Button
             onClick={() => {}}
@@ -108,7 +156,6 @@ export default function ChatPage() {
             New chat
           </Button>
 
-          {/* Chat history */}
           <div className="flex-1 overflow-y-auto space-y-2">
             <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold px-2">History</p>
             {chatHistory.map((chat) => (
@@ -133,7 +180,18 @@ export default function ChatPage() {
         </div>
 
         {/* Main content */}
-        <div className="flex-1 flex flex-col items-center justify-center p-6">
+        <div className="flex-1 flex flex-col items-center justify-center p-6 relative">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setRightSidebarOpen(!rightSidebarOpen)}
+            className="absolute top-6 right-6 h-10 w-10 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 z-10"
+            title="Toggle models sidebar"
+          >
+            <Sliders className="w-5 h-5" />
+            <span className="sr-only">Toggle models</span>
+          </Button>
+
           <Card className="w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden bg-slate-950/95 backdrop-blur border-slate-800/50 rounded-2xl border-2 border-gradient-to-r from-teal-500/30 via-purple-500/30 to-coral-500/30">
             {/* Header */}
             <div className="border-b border-slate-800 px-8 py-6 flex flex-col items-center gap-6 shrink-0 bg-slate-950/50">
@@ -294,6 +352,64 @@ export default function ChatPage() {
               </form>
             </div>
           </Card>
+        </div>
+
+        <div
+          className={`w-80 bg-slate-950/80 backdrop-blur-sm border-l border-slate-800 flex flex-col transition-transform duration-300 ${
+            rightSidebarOpen ? "translate-x-0" : "translate-x-full"
+          } fixed right-0 top-0 h-full z-20`}
+        >
+          {/* Sidebar header */}
+          <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-200">Models</h2>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setRightSidebarOpen(false)}
+              className="h-8 w-8 text-slate-400 hover:text-slate-200"
+            >
+              <X className="w-4 h-4" />
+              <span className="sr-only">Close</span>
+            </Button>
+          </div>
+
+          {/* Models list */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            {modelProviders.map((provider) => (
+              <div key={provider.name} className="space-y-2">
+                <h3 className="text-xs text-slate-500 uppercase tracking-wider font-semibold">{provider.name}</h3>
+                <div className="space-y-1">
+                  {provider.models.map((model) => (
+                    <button
+                      key={model.name}
+                      onClick={() => {
+                        if (model.isLocked) {
+                          handleLockedModelClick(model.name, model.price)
+                        }
+                      }}
+                      disabled={!model.isLocked}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all ${
+                        model.isLocked
+                          ? "opacity-50 hover:opacity-70 hover:bg-slate-900/50 cursor-pointer"
+                          : "hover:bg-slate-900/50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-2 h-2 rounded-full ${provider.color}`} />
+                        <span className="text-sm text-slate-300">{model.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs ${model.isFree ? "text-emerald-400 font-medium" : "text-slate-400"}`}>
+                          {model.price}
+                        </span>
+                        {model.isLocked && <Lock className="w-3.5 h-3.5 text-slate-500" />}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </>
