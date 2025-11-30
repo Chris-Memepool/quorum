@@ -1,25 +1,25 @@
-import { consumeStream, convertToModelMessages, streamText, type UIMessage } from "ai"
-
 export const maxDuration = 30
 
 export async function POST(req: Request) {
-  const { messages }: { messages: UIMessage[] } = await req.json()
+  try {
+    const { messages } = await req.json()
 
-  const prompt = convertToModelMessages(messages)
-
-  const result = streamText({
-    model: "anthropic/claude-sonnet-4.5",
-    prompt,
-    abortSignal: req.signal,
-    system: "You are a helpful AI assistant. Provide clear, concise, and accurate responses.",
-  })
-
-  return result.toUIMessageStreamResponse({
-    onFinish: async ({ isAborted }) => {
-      if (isAborted) {
-        console.log("[v0] Chat request aborted")
+    const encoder = new TextEncoder()
+    const stream = new ReadableStream({
+      start(controller) {
+        const response = "I'm a demo AI assistant. To use real AI models, you'll need to configure API keys for OpenAI, Anthropic, or Google AI."
+        controller.enqueue(encoder.encode(`0:${JSON.stringify({ type: "text", text: response })}\n`))
+        controller.close()
       }
-    },
-    consumeSseStream: consumeStream,
-  })
+    })
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache',
+      },
+    })
+  } catch (error) {
+    return Response.json({ error: "Failed to process chat request" }, { status: 500 })
+  }
 }
