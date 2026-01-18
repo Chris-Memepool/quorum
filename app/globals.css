@@ -38,11 +38,11 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
 
-  --trifect-teal: #2d9b9f;
-  --trifect-purple: #5a3d8a;
-  --trifect-coral: #d66d4d;
-  --trifect-bg: oklch(1 0 0);
-  --trifect-border: oklch(0.92 0 0);
+  --quorum-teal: #2d9b9f;
+  --quorum-purple: #5a3d8a;
+  --quorum-coral: #d66d4d;
+  --quorum-bg: oklch(1 0 0);
+  --quorum-border: oklch(0.92 0 0);
 
   transition: background-color 0.3s ease, color 0.3s ease;
 }
@@ -81,11 +81,11 @@
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
 
-  --trifect-teal: #4db8bd;
-  --trifect-purple: #7e5bb1;
-  --trifect-coral: #e88e74;
-  --trifect-bg: oklch(0.1 0 0);
-  --trifect-border: oklch(0.15 0 0);
+  --quorum-teal: #4db8bd;
+  --quorum-purple: #7e5bb1;
+  --quorum-coral: #e88e74;
+  --quorum-bg: oklch(0.1 0 0);
+  --quorum-border: oklch(0.15 0 0);
 }
 
 @theme inline {
@@ -128,11 +128,11 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  --color-trifect-teal: var(--trifect-teal);
-  --color-trifect-purple: var(--trifect-purple);
-  --color-trifect-coral: var(--trifect-coral);
-  --color-trifect-bg: var(--trifect-bg);
-  --color-trifect-border: var(--trifect-border);
+  --color-quorum-teal: var(--quorum-teal);
+  --color-quorum-purple: var(--quorum-purple);
+  --color-quorum-coral: var(--quorum-coral);
+  --color-quorum-bg: var(--quorum-bg);
+  --color-quorum-border: var(--quorum-border);
 }
 
 @layer base {

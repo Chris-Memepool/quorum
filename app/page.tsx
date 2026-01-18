@@ -3,22 +3,20 @@
 import type React from "react"
 
 import { useChat } from "@ai-sdk/react"
-import { DefaultChatTransport } from "ai"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { ArrowUp, Plus, Moon, Sun, Sliders, Lock, X } from "lucide-react"
+import { ArrowUp, Plus, Moon, Sun, Sliders, X, Settings, Key } from "lucide-react"
 import { useRef, useEffect, useState } from "react"
 import { OrbitalBackground } from "@/components/orbital-background"
+import { ApiKeySettings, getApiKey, hasApiKey, getRequiredKeyForModel } from "@/components/api-key-settings"
 
 type Mode = "chat" | "troubleshoot"
 type Theme = "light" | "dark"
 
 type ModelInfo = {
   name: string
-  price: string
-  isFree: boolean
-  isLocked: boolean
+  provider: "openai" | "anthropic" | "google"
 }
 
 type ModelProvider = {
@@ -32,26 +30,26 @@ const modelProviders: ModelProvider[] = [
     name: "OpenAI",
     color: "bg-teal-500",
     models: [
-      { name: "GPT-4o", price: "Free", isFree: true, isLocked: false },
-      { name: "GPT-4 Turbo", price: "$20", isFree: false, isLocked: true },
-      { name: "o1", price: "$30", isFree: false, isLocked: true },
-      { name: "o1-mini", price: "$15", isFree: false, isLocked: true },
+      { name: "GPT-4o", provider: "openai" },
+      { name: "GPT-4 Turbo", provider: "openai" },
+      { name: "o1", provider: "openai" },
+      { name: "o1-mini", provider: "openai" },
     ],
   },
   {
     name: "Google",
     color: "bg-purple-500",
     models: [
-      { name: "Gemini 1.5 Flash", price: "Free", isFree: true, isLocked: false },
-      { name: "Gemini 1.5 Pro", price: "$25", isFree: false, isLocked: true },
+      { name: "Gemini 1.5 Flash", provider: "google" },
+      { name: "Gemini 1.5 Pro", provider: "google" },
     ],
   },
   {
     name: "Anthropic",
     color: "bg-orange-500",
     models: [
-      { name: "Claude Sonnet", price: "Free", isFree: true, isLocked: false },
-      { name: "Claude Opus", price: "$35", isFree: false, isLocked: true },
+      { name: "Claude Sonnet", provider: "anthropic" },
+      { name: "Claude Opus", provider: "anthropic" },
     ],
   },
 ]
@@ -60,10 +58,12 @@ export default function ChatPage() {
   const [mode, setMode] = useState<Mode>("chat")
   const [theme, setTheme] = useState<Theme>("light")
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false)
-  const [aiModels, setAiModels] = useState({
-    gpt: true,
-    gemini: true,
-    claude: true,
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [selectedModel, setSelectedModel] = useState<string>("GPT-4o")
+  const [apiKeys, setApiKeys] = useState({
+    openai: "",
+    anthropic: "",
+    google: "",
   })
   const [chatHistory, setChatHistory] = useState<{ id: string; title: string }[]>([
     { id: "1", title: "Project Setup Guide" },
@@ -82,6 +82,24 @@ export default function ChatPage() {
       setTheme("dark")
       document.documentElement.classList.add("dark")
     }
+
+    // Load API keys
+    setApiKeys({
+      openai: getApiKey("openai"),
+      anthropic: getApiKey("anthropic"),
+      google: getApiKey("google"),
+    })
+
+    // Listen for API key updates
+    const handleApiKeysUpdated = () => {
+      setApiKeys({
+        openai: getApiKey("openai"),
+        anthropic: getApiKey("anthropic"),
+        google: getApiKey("google"),
+      })
+    }
+    window.addEventListener("apiKeysUpdated", handleApiKeysUpdated)
+    return () => window.removeEventListener("apiKeysUpdated", handleApiKeysUpdated)
   }, [])
 
   const toggleTheme = () => {
@@ -91,20 +109,30 @@ export default function ChatPage() {
     document.documentElement.classList.toggle("dark", newTheme === "dark")
   }
 
-  const toggleAiModel = (model: "gpt" | "gemini" | "claude") => {
-    setAiModels((prev) => ({
-      ...prev,
-      [model]: !prev[model],
-    }))
-  }
-
-  const handleLockedModelClick = (modelName: string, price: string) => {
-    alert(`Upgrade to access ${modelName} for ${price}/month`)
-  }
-
   const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/chat" }),
+    api: "/api/chat",
+    fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+      const response = await fetch(input, {
+        ...init,
+        body: init?.body
+          ? JSON.stringify({
+              ...JSON.parse(init.body as string),
+              apiKeys,
+              selectedModel,
+            })
+          : JSON.stringify({ apiKeys, selectedModel }),
+      })
+      return response
+    },
   })
+
+  const canUseModel = (modelName: string): boolean => {
+    const requiredKey = getRequiredKeyForModel(modelName)
+    if (!requiredKey) return false
+    return hasApiKey(requiredKey)
+  }
+
+  const isChatDisabled = !canUseModel(selectedModel) || status === "in_progress"
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -181,63 +209,47 @@ export default function ChatPage() {
 
         {/* Main content */}
         <div className="flex-1 flex flex-col items-center justify-center p-6 relative">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setRightSidebarOpen(!rightSidebarOpen)}
-            className="absolute top-6 right-6 h-10 w-10 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 z-10"
-            title="Toggle models sidebar"
-          >
-            <Sliders className="w-5 h-5" />
-            <span className="sr-only">Toggle models</span>
-          </Button>
+          <div className="absolute top-6 right-6 flex gap-2 z-10">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSettingsOpen(true)}
+              className="h-10 w-10 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+              title="API Key Settings"
+            >
+              <Key className="w-5 h-5" />
+              <span className="sr-only">Settings</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setRightSidebarOpen(!rightSidebarOpen)}
+              className="h-10 w-10 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+              title="Toggle models sidebar"
+            >
+              <Sliders className="w-5 h-5" />
+              <span className="sr-only">Toggle models</span>
+            </Button>
+          </div>
 
           <Card className="w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden bg-slate-950/95 backdrop-blur border-slate-800/50 rounded-2xl border-2 border-gradient-to-r from-teal-500/30 via-purple-500/30 to-coral-500/30">
             {/* Header */}
             <div className="border-b border-slate-800 px-8 py-6 flex flex-col items-center gap-6 shrink-0 bg-slate-950/50">
               <img
                 src="/images/lucid-origin-logo-for-trifectai-triangle-made-of-three-connec-0-removebg-preview-removebg-preview.png"
-                alt="trifectAI"
+                alt="Quorum"
                 className="h-20 w-auto"
               />
 
-              <div className="flex gap-3 items-center">
-                <button
-                  onClick={() => toggleAiModel("gpt")}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
-                    aiModels.gpt
-                      ? "bg-teal-500/20 border border-teal-500 shadow-lg shadow-teal-500/20"
-                      : "bg-transparent border border-slate-700 opacity-50 hover:opacity-75"
-                  }`}
-                  title="Toggle GPT"
-                >
-                  <div className="w-3 h-3 rounded-full bg-teal-500" />
-                  <span className="text-sm text-slate-300 font-medium">GPT</span>
-                </button>
-                <button
-                  onClick={() => toggleAiModel("gemini")}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
-                    aiModels.gemini
-                      ? "bg-purple-500/20 border border-purple-500 shadow-lg shadow-purple-500/20"
-                      : "bg-transparent border border-slate-700 opacity-50 hover:opacity-75"
-                  }`}
-                  title="Toggle Gemini"
-                >
-                  <div className="w-3 h-3 rounded-full bg-purple-500" />
-                  <span className="text-sm text-slate-300 font-medium">Gemini</span>
-                </button>
-                <button
-                  onClick={() => toggleAiModel("claude")}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
-                    aiModels.claude
-                      ? "bg-orange-500/20 border border-orange-500 shadow-lg shadow-orange-500/20"
-                      : "bg-transparent border border-slate-700 opacity-50 hover:opacity-75"
-                  }`}
-                  title="Toggle Claude"
-                >
-                  <div className="w-3 h-3 rounded-full bg-orange-500" />
-                  <span className="text-sm text-slate-300 font-medium">Claude</span>
-                </button>
+              <div className="flex flex-col items-center gap-3">
+                <div className="text-sm text-slate-400">
+                  Selected: <span className="text-slate-200 font-medium">{selectedModel}</span>
+                </div>
+                {!canUseModel(selectedModel) && (
+                  <div className="text-xs text-amber-400 bg-amber-400/10 px-3 py-1.5 rounded-lg border border-amber-400/20">
+                    API key required. Click the <Key className="w-3 h-3 inline mx-1" /> icon to add your keys.
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2 items-center p-1 bg-slate-900 border border-slate-700 rounded-full">
@@ -322,8 +334,8 @@ export default function ChatPage() {
                 <Input
                   ref={inputRef}
                   name="message"
-                  placeholder="Message..."
-                  disabled={status === "in_progress"}
+                  placeholder={isChatDisabled && !canUseModel(selectedModel) ? "API key required..." : "Message..."}
+                  disabled={isChatDisabled}
                   className="flex-1 h-10 bg-slate-900 border-slate-700 text-slate-100 placeholder:text-slate-500"
                   autoComplete="off"
                   onKeyDown={handleKeyDown}
@@ -331,9 +343,9 @@ export default function ChatPage() {
                 />
                 <Button
                   type="submit"
-                  disabled={status === "in_progress"}
+                  disabled={isChatDisabled}
                   size="icon"
-                  className="shrink-0 h-10 w-10 bg-gradient-to-r from-teal-500 to-purple-500 hover:from-teal-600 hover:to-purple-600"
+                  className="shrink-0 h-10 w-10 bg-gradient-to-r from-teal-500 to-purple-500 hover:from-teal-600 hover:to-purple-600 disabled:opacity-50"
                 >
                   <ArrowUp className="w-4 h-4" />
                   <span className="sr-only">Send</span>
@@ -379,39 +391,44 @@ export default function ChatPage() {
               <div key={provider.name} className="space-y-2">
                 <h3 className="text-xs text-slate-500 uppercase tracking-wider font-semibold">{provider.name}</h3>
                 <div className="space-y-1">
-                  {provider.models.map((model) => (
-                    <button
-                      key={model.name}
-                      onClick={() => {
-                        if (model.isLocked) {
-                          handleLockedModelClick(model.name, model.price)
-                        }
-                      }}
-                      disabled={!model.isLocked}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all ${
-                        model.isLocked
-                          ? "opacity-50 hover:opacity-70 hover:bg-slate-900/50 cursor-pointer"
-                          : "hover:bg-slate-900/50"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className={`w-2 h-2 rounded-full ${provider.color}`} />
-                        <span className="text-sm text-slate-300">{model.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs ${model.isFree ? "text-emerald-400 font-medium" : "text-slate-400"}`}>
-                          {model.price}
-                        </span>
-                        {model.isLocked && <Lock className="w-3.5 h-3.5 text-slate-500" />}
-                      </div>
-                    </button>
-                  ))}
+                  {provider.models.map((model) => {
+                    const hasKey = canUseModel(model.name)
+                    const isSelected = selectedModel === model.name
+                    return (
+                      <button
+                        key={model.name}
+                        onClick={() => setSelectedModel(model.name)}
+                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all ${
+                          isSelected
+                            ? "bg-slate-800 border border-slate-700"
+                            : hasKey
+                            ? "hover:bg-slate-900/50"
+                            : "opacity-50 hover:opacity-70 hover:bg-slate-900/50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-2 h-2 rounded-full ${provider.color}`} />
+                          <span className="text-sm text-slate-300">{model.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isSelected && (
+                            <div className="w-2 h-2 rounded-full bg-teal-500" />
+                          )}
+                          {!hasKey && (
+                            <Key className="w-3.5 h-3.5 text-slate-500" />
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             ))}
           </div>
         </div>
       </div>
+
+      <ApiKeySettings open={settingsOpen} onOpenChange={setSettingsOpen} />
     </>
   )
 }

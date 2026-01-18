@@ -6,11 +6,9 @@ import "./globals.css"
 const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
-export const dynamic = 'force-dynamic'
-
 export const metadata: Metadata = {
-  title: "v0 AI Gateway Starter",
-  description: "Created with v0",
+  title: "Quorum",
+  description: "Three minds. One answer.",
   generator: "v0.app",
 }
 

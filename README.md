@@ -1,30 +1,46 @@
-# AI Gateway Starter
+# Quorum
 
-*Automatically synced with your [v0.app](https://v0.app) deployments*
+Three minds. One answer.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/synergys-projects-473c5afb/v0-ai-gateway-starter-p9)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.app-black?style=for-the-badge)](https://v0.app/chat/RmodJ8lZ7zt)
+A self-hosted AI gateway that lets you chat with multiple AI models using your own API keys. Your keys stay local, your data stays private.
 
-## Overview
+## Features
 
-This repository will stay in sync with your deployed chats on [v0.app](https://v0.app).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.app](https://v0.app).
+- **Multi-model support:** OpenAI (GPT-4o, GPT-4 Turbo), Anthropic (Claude 3.5 Sonnet, Claude 3 Opus), Google (Gemini 1.5 Pro/Flash)
+- **Self-hosted:** Run locally, no data leaves your machine except to the AI providers
+- **Your keys:** Use your own API keys, stored in your browser's localStorage
+- **Clean UI:** Modern dark interface with model switching
 
-## Deployment
+## Screenshots
 
-Your project is live at:
+[screenshots here]
 
-**[https://vercel.com/synergys-projects-473c5afb/v0-ai-gateway-starter-p9](https://vercel.com/synergys-projects-473c5afb/v0-ai-gateway-starter-p9)**
+## Quick Start
 
-## Build your app
+```bash
+git clone https://github.com/[your-username]/quorum.git
+cd quorum
+npm install
+npm run dev
+```
 
-Continue building your app on:
+Open http://localhost:3000
 
-**[https://v0.app/chat/RmodJ8lZ7zt](https://v0.app/chat/RmodJ8lZ7zt)**
+## Getting API Keys
 
-## How It Works
+You'll need at least one API key:
 
-1. Create and modify your project using [v0.app](https://v0.app)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+- **OpenAI:** https://platform.openai.com/api-keys
+- **Anthropic:** https://console.anthropic.com/settings/keys
+- **Google:** https://aistudio.google.com/app/apikey
+
+## Tech Stack
+
+- Next.js 15
+- Vercel AI SDK
+- Tailwind CSS
+- TypeScript
+
+## License
+
+MIT
